@@ -1,16 +1,20 @@
 #include <Arduino_LSM6DS3.h>                    // include the library for LSM6DS3 accelerometer sensor
-#include <TinyGPS++.h>                          //Library to extract lattiude and longtitude from NMEA format output of GPS .
-#include <WiFiNINA.h>                           //Library for wifi-connection 
-#include<ArduinoJson.h>                         ///Library to parse Json Data
+#include <TinyGPS++.h>                          //Library to extract lattiude and longt from NMEA format output of GPS .
 TinyGPSPlus gps;                                //initialising the gps object .
+
+#include <WiFiNINA.h>                           //Library for wifi-connection 
 
 WiFiSSLClient client; 
 WiFiServer server(80);                          //Initialising wifi server
 
-String hospitalsdata = "hospitals ";
-String mapsLink ;               
-float latitude  ;
-float longtitude ;
+#include<ArduinoJson.h>                         ///Library to parse Json Data
+
+
+
+String hospiDatas = "hospitals ";
+String mapL ;               
+float lat  ;
+float longt ;
 
 void setup() {
   Serial.begin(115200);                        // initialize serial communication with baud rate 115200
@@ -49,22 +53,22 @@ void loop() {
      while (Serial1.available())                //while GPS is sending the data .
   { 
     if (gps.encode(Serial1.read()))
-    {                                         // If valid data is received from GPS module, extract latitude and longitude
+    {                                         // If valid data is received from GPS module, extract lat and longt
       if (gps.location.isUpdated())
       {
-          latitude = gps.location.lat();
-          longitude = gps.location.lng();
+          lat = gps.location.lat();
+          longt = gps.location.lng();
                                               // Construct Google Maps link                                       
-        mapsLink = "https://www.google.com/maps?q=@" + String(latitude, 6) + "," + String(longitude, 6);
+        mapL = "https://www.google.com/maps?q=@" + String(lat, 6) + "," + String(longt, 6);
                       
-        Serial.println(mapsLink);           //Print the Google Maps link to serial monitor
+        Serial.println(mapL);           //Print the Google Maps link to serial monitor
       }
     }
     else{
       Serial.println("Encoding the GPS Data....");
     }
   }
-  Serial.println(mapsLink);
+  Serial.println(mapL);
   float x, y, z;                            // variables to store accelerometer readings
 
                                             // read accelerometer values from the sensor
@@ -92,7 +96,7 @@ void loop() {
     fetch_hospitals();
     delay(2000);
     SendMessage1();             
-    hospitalsdata = "";
+    hospiDatas = "";
     delay(20000);                           // Wait for 20 seconds
   }
     else
@@ -106,9 +110,9 @@ void loop() {
 
  void SendMessage()   
   {
-  String mapsLink1 = "Vehicle registered by  +919885061950 just encountered an accident at - ";
-  mapsLink1 += "\n";
-  mapsLink1 += mapsLink;
+  String mapL1 = "Vehicle registered by  +919885061950 just encountered an accident at - ";
+  mapL1 += "\n";
+  mapL1 += mapL;
      
   Serial.println ("Sending Message");   
   Serial1.println("AT+CMGF=1");                   //Sets the GSM Module in Text Mode   
@@ -117,7 +121,7 @@ void loop() {
   Serial1.println("AT+CMGS=\"$$$$$$$$$\"\r"); //Write Mobile number to send message  , do include the country code
   delay(1000);   
   Serial.println ("Setting SMS Content");
-  Serial1.println(mapsLink1);                      // Messsage content   
+  Serial1.println(mapL1);                      // Messsage content   
   delay(100);   
   Serial.println ("Finish");   
   Serial1.println((char)26);                      // ASCII code of CTRL+Z   
@@ -134,8 +138,8 @@ void loop() {
   Serial1.println("AT+CMGS=\"$$$$$$$$$$$$\"\r"); //Write Mobile number to send message   
   delay(1000);   
   Serial.println ("Setting SMS Content");
-  Serial1.println(hospitalsdata);                      // Messsage content   
-  Serial.println(hospitalsdata);
+  Serial1.println(hospiDatas);                      // Messsage content   
+  Serial.println(hospiDatas);
   delay(100);   
   Serial.println ("Finish");   
   Serial1.println((char)26);                      // ASCII code of CTRL+Z   
@@ -160,7 +164,7 @@ void fetch_hospitals(){
    if (WiFi.status() == WL_CONNECTED) {
     Serial.println("API");
     if (client.connect("browse.search.hereapi.com", 443)) {
-      client.println("GET /v1/browse?at=" + String(latitude,6)+","+ String(longtitude, 6)+"&limit=3&categories=800-8000-0000&apiKey=X62ZFkTVetzJyRyb5kgM-9qVlcjwJ5-Cqex6gSq56Ig HTTP/1.1");
+      client.println("GET /v1/browse?at=" + String(lat,6)+","+ String(longt, 6)+"&limit=3&categories=800-8000-0000&apiKey=X62ZFkTVetzJyRyb5kgM-9qVlcjwJ5-Cqex6gSq56Ig HTTP/1.1");
       client.println("Host: browse.search.hereapi.com");
       client.println("Connection: close");
       client.println();
@@ -266,11 +270,11 @@ void parsee(String json){
     Serial.println(phoneNumber.length());
     delay(1000);
     if(phoneNumber.length()>0){
-      hospitalsdata += "Name:- " + name + "\n";
-      hospitalsdata += "Adress:- " + fullAddress + "\n";
-      hospitalsdata += "Phone number:- " + phoneNumber + "\n";
-      hospitalsdata += "\n";
-      hospitalsdata += "\n";
+      hospiDatas += "Name:- " + name + "\n";
+      hospiDatas += "Adress:- " + fullAddress + "\n";
+      hospiDatas += "Phone number:- " + phoneNumber + "\n";
+      hospiDatas += "\n";
+      hospiDatas += "\n";
     }
     
     Serial.println();
@@ -281,7 +285,7 @@ void parsee(String json){
     delay(1000);
     displayy();
     Serial.println("done displaying");
-    hospitalsdata = "";
+    hospiDatas = "";
 }
 
 //display function to display the accident and nearest hospitals details on server 
@@ -300,7 +304,7 @@ void displayy(){
     client.println("HTTP/1.1 200 OK");
     client.println("Content-Type: text/html");
     client.println("");
-    client.println("<html><body><h1>" + hospitalsdata +  "</h1></body></html>");
+    client.println("<html><body><h1>" + hospiDatas +  "</h1></body></html>");
 
     // close the connection
     client.stop();
